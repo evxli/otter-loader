@@ -9,7 +9,7 @@ Grid 36 x 36, one beat = 52 ms. Everything is defined in beats, so it looks the 
 
 ## Try it
 
-Open `index.html` in a browser. Use the Succeed and Reset buttons.
+Open `index.html` in a browser. Use the Scanning state and Success state buttons.
 
 ## Use it
 
