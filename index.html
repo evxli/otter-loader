@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Otter Loader</title>
+<style>
+  body{margin:0;background:#0E0E0E;color:#EDEDED;font:15px/1.5 -apple-system,"Helvetica Neue",Arial,sans-serif;display:grid;place-items:center;min-height:100vh;gap:16px}
+  .card{width:min(70vw,320px);aspect-ratio:1;border-radius:22%;background:#171717;display:block}
+  .row{display:flex;gap:10px}
+  button{border:1px solid #2A2A2A;background:transparent;color:#EDEDED;font:inherit;font-size:13px;padding:6px 14px;border-radius:8px;cursor:pointer}
+  button:hover{border-color:#4DA3FF}
+</style>
+</head>
+<body>
+<canvas class="card" id="loader"></canvas>
+<div class="row"><button id="ok">Succeed</button><button id="reset">Reset</button></div>
+
+<script>
+/* ============================================================
+   OtterLoader — dot-grid loader with a success transition.
+
+   Default state  : "Scan bounce". A band sweeps down the otter,
+                    turns at the bottom and sweeps back up, with a
+                    five-row trail. Shaded mono: eyes and outline
+                    brightest, muzzle softest.
+   Success state  : "From the muzzle, soft". The scan stops, the
+                    grey dots rest dim, and a deep blue grows out
+                    from the left of the muzzle with a wide, soft
+                    front. The blue holds until reset().
+
+   Usage:
+     const loader = OtterLoader(canvasElement);   // starts scanning
+     loader.succeed();                             // play the success state
+     loader.reset();                               // back to scanning
+     loader.destroy();                             // stop the clock
+
+   Grid 36 x 36, one beat = 52 ms. Everything is defined in beats,
+   so it looks identical at any canvas size. No dependencies.
+   ============================================================ */
+const OtterLoader = (() => {
+  const SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1190 1195" width="1190" height="1195">
+  <defs><clipPath id="r"><rect x="0" y="0" width="1190" height="1195" rx="215"/></clipPath></defs>
+  
+  <g clip-path="url(#r)">
+    
+    <!-- filled shapes, no strokes -->
+    <path d="M355 720 C330 790 300 880 300 1000 C300 1090 305 1160 310 1200 L1080 1200 C1075 1080 1060 880 1035 760 C1020 690 1010 620 1005 560 L620 720 Z" fill="#8AD684"/>
+    <path d="M355 730 C300 800 220 900 160 1000 C120 1060 95 1110 85 1200 L295 1200 C290 1100 295 1000 320 900 C335 850 350 790 355 730 Z" fill="#8AD684"/>
+    <path d="M255 290 C320 200 440 140 570 128 C690 118 800 150 905 235 C980 300 1015 400 1010 560 C1006 640 985 700 930 720 C820 735 700 735 600 722 C520 715 420 705 350 700 C280 690 210 640 190 560 C175 490 195 400 255 290 Z" fill="#8AD684"/>
+    <!-- one continuous outline: jaw, muzzle, crown, right side, down the body -->
+    <g fill="none" stroke="#101614" stroke-width="15" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M615 722 C520 716 420 706 350 700 C280 690 210 640 190 560 C175 490 195 400 255 290 C320 200 440 140 570 128 C690 118 800 150 905 235 C980 300 1015 400 1010 560 C1015 700 1040 900 1080 1200"/>
+      <!-- left arm outline, open at the bottom -->
+      <path d="M355 730 C300 800 220 900 160 1000 C120 1060 95 1110 85 1200"/>
+      <path d="M355 730 C340 800 320 880 318 960 C315 1050 300 1120 295 1200"/>
+      <!-- sketchy inner strokes from the source -->
+      <path d="M975 990 C950 1050 920 1110 900 1150" stroke-width="12"/>
+      <path d="M700 890 C700 980 690 1080 680 1200" stroke-width="10" opacity="0.7"/>
+    </g>
+    <!-- chest panel -->
+    <path d="M640 760 C660 830 690 880 705 900 C712 1000 705 1100 700 1200 L1005 1200 C1005 1080 990 900 955 780 C880 770 760 765 640 760 Z" fill="#A5E392"/>
+    <!-- muzzle -->
+    <path d="M180 540 C165 460 215 405 300 402 C345 400 380 410 405 420 C470 400 560 430 585 500 C605 570 585 635 520 640 C455 645 395 625 360 590 C335 630 275 655 235 645 C200 635 185 590 180 540 Z" fill="#BAEBA5"/>
+    <!-- eyes -->
+    <ellipse cx="305" cy="372" rx="32" ry="46" fill="#4A2020" transform="rotate(-8 305 372)"/>
+    <ellipse cx="322" cy="345" rx="15" ry="20" fill="#FFF8EC" transform="rotate(-20 322 345)"/>
+    <ellipse cx="602" cy="385" rx="38" ry="56" fill="#4A2020" transform="rotate(-8 602 385)"/>
+    <ellipse cx="628" cy="352" rx="17" ry="22" fill="#FFF8EC" transform="rotate(-20 628 352)"/>
+    <!-- nose + mouth -->
+    <path d="M312 398 C345 388 400 392 430 405 C405 440 385 460 370 468 C350 460 330 430 312 398 Z" fill="#9C4535"/>
+    <path d="M370 468 C360 452 345 442 330 440" fill="none" stroke="#7A3328" stroke-width="10" stroke-linecap="round"/>
+    <path d="M370 468 C380 452 395 442 410 440" fill="none" stroke="#7A3328" stroke-width="10" stroke-linecap="round"/>
+    <!-- cheek spots -->
+    <ellipse cx="650" cy="498" rx="30" ry="16" fill="#3E8A63" transform="rotate(-25 650 498)"/>
+    <ellipse cx="700" cy="478" rx="30" ry="16" fill="#3E8A63" transform="rotate(-25 700 478)"/>
+    <ellipse cx="716" cy="526" rx="30" ry="16" fill="#3E8A63" transform="rotate(-25 716 526)"/>
+  </g>
+</svg>
+`;
+  const N = 36, STEP = 52;                       // grid size, ms per beat
+  const OFF = 0.12, REST = 0.3, EDGE = 6, GLOW_K = 0.3;
+  const INK = [244,244,244];                     // mono dot colour
+  const BLUE = [30,122,255], BLUE_LIGHT = [70,150,255], GLOW = [232,243,255];
+  const TONE_MONO = [0.42,0.62,0.82,1];          // alpha per tone: muzzle, body, mid, eyes/outline
+  const TONE_BLUE = [0.3,0.55,0.8,1];
+  const TONE_R = [0.8,0.9,1,1.08];               // dot radius per tone
+  const mod=(a,n)=>((a%n)+n)%n, q=(x,l)=>Math.round(x*l)/l, clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+  const trail=(d,len)=>d<0?OFF:q(Math.max(OFF,1-d/len),4);
+  const mix=(a,b,t)=>[a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t];
+  const rgb=(c,a)=>`rgba(${c[0]|0},${c[1]|0},${c[2]|0},${a})`;
+
+  // --- sample the otter once, shared by every instance ---
+  let cells=null, otter=null, geo=null, ready=null;
+  function sample(){
+    if (ready) return ready;
+    ready = new Promise(res => {
+      const img = new Image();
+      img.onload = () => {
+        const mid=document.createElement('canvas'); mid.width=mid.height=N*4; const mg=mid.getContext('2d'); mg.imageSmoothingQuality='high'; mg.drawImage(img,0,0,N*4,N*4);
+        const c=document.createElement('canvas'); c.width=c.height=N; const g=c.getContext('2d',{willReadFrequently:true}); g.imageSmoothingQuality='high'; g.drawImage(mid,0,0,N,N);
+        const p=g.getImageData(0,0,N,N).data; cells=[]; otter=[];
+        for(let j=0;j<N;j++)for(let i=0;i<N;i++){const k=(j*N+i)*4,a=p[k+3]/255;const r=a>0?p[k]/a:0,gg=a>0?p[k+1]/a:0,b=a>0?p[k+2]/a:0;const lum=(0.299*r+0.587*gg+0.114*b)/255;
+          const cell={i,j,on:a>0.35,tone:lum>0.76?0:lum>0.55?1:lum>0.3?2:3}; cells.push(cell); if(cell.on) otter.push(cell);}
+        let sx=0,sy=0,minJ=N,maxJ=0; for(const c of otter){sx+=c.i;sy+=c.j;minJ=Math.min(minJ,c.j);maxJ=Math.max(maxJ,c.j);}
+        const cx=sx/otter.length, cy=sy/otter.length; let R=1; for(const c of otter) R=Math.max(R,Math.hypot(c.i-cx,c.j-cy));
+        for(const c of otter){ c.row=c.j-minJ; c.r=Math.hypot(c.i-cx,c.j-cy)/R; }
+        // left edge of the muzzle: the lightest dots in the otter's upper left
+        const muz=otter.filter(c=>c.tone===0 && c.j<cy && c.i<cx); let mx=cx,my=cy;
+        if(muz.length){ const minX=Math.min(...muz.map(c=>c.i)); const col=muz.filter(c=>c.i<=minX+1).map(c=>c.j).sort((a,b)=>a-b); mx=minX; my=col[col.length>>1]; }
+        geo={H:maxJ-minJ+1,R,muzzle:{x:mx,y:my}};
+        for(const c of otter) c.arrive = Math.hypot(c.i-mx,c.j-my)/(2*R)*26;   // beat at which the blue reaches this dot
+        res();
+      };
+      img.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(SVG);
+    });
+    return ready;
+  }
+
+  // --- the default loop: linear scan bounce with a trailing tail ---
+  function scan(c,s){ const L=geo.H+4,P=geo.H+6,ph=mod(s,2*P),down=ph<P,t=(down?ph:ph-P)/P; const front=down?-2+t*L:(L-2)-t*L; return trail(down?front-c.row:c.row-front,5); }
+
+  return function OtterLoader(canvas){
+    let tapBeat=null, last=-1, raf=0, alive=true;
+    function paint(s){
+      const dpr=Math.min(devicePixelRatio||1,2), size=canvas.clientWidth||240;
+      if(canvas.width!==Math.round(size*dpr)) canvas.width=canvas.height=Math.round(size*dpr);
+      const g=canvas.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,size,size);
+      const pad=size*0.10, cs=(size-2*pad)/N, base=cs*0.34;
+      const b = tapBeat==null ? -1 : s-tapBeat;                     // beats since succeed()
+      g.fillStyle='rgba(255,255,255,0.12)';
+      for(const c of cells){ if(c.on) continue; g.beginPath(); g.arc(pad+(c.i+0.5)*cs,pad+(c.j+0.5)*cs,base*0.85,0,Math.PI*2); g.fill(); }
+      for(const c of otter){
+        let k = b<0 ? scan(c,s) : REST;                              // scanning, or resting dim once tapped
+        const ta=(b<0?TONE_MONO:TONE_BLUE)[c.tone], tr=TONE_R[c.tone];
+        let col=INK, alpha=(0.16+0.84*k)*ta, rad=base*(0.82+0.28*k)*tr;
+        if(b>=0){
+          const p=clamp((b-c.arrive)/EDGE,0,1), glow=p>0&&p<1?GLOW_K:0;
+          if(p>0){
+            const breath=0.9+0.1*Math.sin(s*0.35+c.r*4);
+            const blue=mix(BLUE,BLUE_LIGHT,breath-0.9), a2=ta*breath;
+            col=mix(mix(col,blue,p),GLOW,glow);
+            alpha=alpha+(a2-alpha)*Math.min(1,p+glow);
+            rad=rad*(1+0.12*glow)+base*0.06*p;
+          }
+        }
+        g.fillStyle=rgb(col,alpha); g.beginPath(); g.arc(pad+(c.i+0.5)*cs,pad+(c.j+0.5)*cs,rad,0,Math.PI*2); g.fill();
+      }
+    }
+    function tick(now){ if(!alive) return; const s=Math.floor(now/STEP); if(s!==last){ last=s; paint(s); } raf=requestAnimationFrame(tick); }
+    sample().then(()=>{ raf=requestAnimationFrame(tick); });
+    return {
+      succeed(){ tapBeat = Math.floor(performance.now()/STEP); },
+      reset(){ tapBeat = null; },
+      destroy(){ alive=false; cancelAnimationFrame(raf); },
+    };
+  };
+})();
+
+// demo wiring
+const loader = OtterLoader(document.getElementById('loader'));
+document.getElementById('ok').onclick = () => loader.succeed();
+document.getElementById('reset').onclick = () => loader.reset();
+</script>
+</body>
+</html>
