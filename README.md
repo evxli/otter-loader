@@ -7,9 +7,13 @@ A dot-grid loading animation with a success transition. One HTML file, no depend
 
 Grid 36 x 36, one beat = 52 ms. Everything is defined in beats, so it looks the same at any canvas size.
 
+The container is a 1px `#525252` stroke at 30% opacity, outside the box, with 12px corners, no fill and no padding. The grid fills the canvas edge to edge and the rounded corners clip the background dots that fall past them.
+
+Text under the animation, 24px below it: header Inter Semi Bold 20, line height 125%, letter spacing -1%; description Inter Regular 14, line height 150%, letter spacing -0.75%; 4px between them.
+
 ## Try it
 
-Open `index.html` in a browser. It shows the scanning state, the success state, and a third card that cycles from one to the other.
+Open `index.html` in a browser. It shows the tapping state, the tapping success state, and a third card that cycles from one to the other, each with its header and description text.
 
 ## Use it
 
@@ -18,6 +22,7 @@ Copy the `OtterLoader` script block into your page, give it a square `<canvas>`,
 ```js
 const loader = OtterLoader(canvasElement); // starts scanning
 loader.succeed();                          // play the success state, holds blue
+OtterLoader(canvasElement, {pad:0.1});     // optional margin around the grid (default 0)
 loader.reset();                            // back to scanning
 loader.destroy();                          // stop the animation clock
 ```

@@ -4,20 +4,25 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Otter Loader</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap">
 <style>
-  body{margin:0;background:#0E0E0E;color:#EDEDED;font:15px/1.5 -apple-system,"Helvetica Neue",Arial,sans-serif;display:grid;place-items:center;min-height:100vh;padding:24px;box-sizing:border-box}
+  body{margin:0;background:#0E0E0E;color:#EDEDED;font:15px/1.5 -apple-system,"Helvetica Neue",Arial,sans-serif;display:flex;flex-direction:column;align-items:center;min-height:100vh;padding:40px 24px;box-sizing:border-box}
   .row{display:flex;gap:28px;flex-wrap:wrap;justify-content:center}
-  .stage{display:flex;flex-direction:column;gap:10px;align-items:center}
-  .card{width:min(80vw,280px);aspect-ratio:1;border-radius:22%;background:#171717;display:block}
-  .label{font:12px/1 ui-monospace,Menlo,monospace;letter-spacing:0.06em;text-transform:uppercase;color:#8F8F8F}
+  .stage{display:flex;flex-direction:column}
+  .stage{align-items:stretch}
+  /* annotation only, like a frame label in a design file: not part of the UI */
+  .label{align-self:flex-start;font:400 12px/1 Inter,-apple-system,"Helvetica Neue",Arial,sans-serif;color:#6A6A6A;margin-bottom:12px}
+  /* the container: 1px #525252 at 30% outside, 12px corners, no fill, no padding; corner dots are clipped by the shape */
+  .card{width:min(80vw,240px);aspect-ratio:1;border-radius:12px;background:none;padding:0;box-sizing:content-box;border:1px solid rgba(82,82,82,0.3);display:block}
+  /* state text: 24px below the animation, 4px between header and description */
+  .text{margin-top:24px;display:flex;flex-direction:column;gap:4px;align-items:center;text-align:center;font-family:Inter,-apple-system,"Helvetica Neue",Arial,sans-serif}
+  .text h2{margin:0;font-weight:600;font-size:20px;line-height:125%;letter-spacing:-0.01em;color:#EDEDED}
+  .text p{margin:0;font-weight:400;font-size:14px;line-height:150%;letter-spacing:-0.0075em;color:#8F8F8F}
+  .text h2,.text p{transition:opacity 180ms ease}
 </style>
 </head>
 <body>
-<div class="row">
-  <div class="stage"><canvas class="card" id="scanning"></canvas><span class="label">Scanning state</span></div>
-  <div class="stage"><canvas class="card" id="success"></canvas><span class="label">Success state</span></div>
-  <div class="stage"><canvas class="card" id="transition"></canvas><span class="label">Scanning to success</span></div>
-</div>
+<div id="sections"></div>
 
 <script>
 /* ============================================================
@@ -38,7 +43,8 @@
                     until reset().
 
    Usage:
-     const loader = OtterLoader(canvasElement);   // starts scanning
+     const loader = OtterLoader(canvasElement);   // starts scanning, grid fills the canvas edge to edge
+     OtterLoader(canvasElement, {pad:0.1});        // or leave a margin around the grid
      loader.succeed();                             // play the success state
      loader.succeed({instant:true});               // jump straight to the held blue
      loader.reset();                               // back to scanning
@@ -138,13 +144,14 @@ const OtterLoader = (() => {
   }
   function scan(c,s){ const {pos}=front(s); if(Math.abs(c.row-pos)<0.6) return 1; return q(Math.max(OFF,1-Math.max(0,since(c.row,s))/SCAN_TRAIL),4); }
 
-  return function OtterLoader(canvas){
+  return function OtterLoader(canvas, opts){
+    const PAD = opts && opts.pad != null ? opts.pad : 0;      // fraction of the canvas left around the grid (0 = edge to edge)
     let tapBeat=null, last=-1, raf=0, alive=true;
     function paint(s){
       const dpr=Math.min(devicePixelRatio||1,2), size=canvas.clientWidth||240;
       if(canvas.width!==Math.round(size*dpr)) canvas.width=canvas.height=Math.round(size*dpr);
       const g=canvas.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,size,size);
-      const pad=size*0.10, cs=(size-2*pad)/N, base=cs*0.34;
+      const pad=size*PAD, cs=(size-2*pad)/N, base=cs*0.34;
       const b = tapBeat==null ? -1 : s-tapBeat;                     // beats since succeed()
       g.fillStyle='rgba(255,255,255,0.12)';
       for(const c of cells){ if(c.on) continue; g.beginPath(); g.arc(pad+(c.i+0.5)*cs,pad+(c.j+0.5)*cs,base*0.85,0,Math.PI*2); g.fill(); }
@@ -178,10 +185,16 @@ const OtterLoader = (() => {
 })();
 
 // demo: the two states side by side, and a third card cycling from one to the other
-OtterLoader(document.getElementById('scanning'));
-OtterLoader(document.getElementById('success')).succeed();          // plays the blue growing out, then holds
-const cycle = OtterLoader(document.getElementById('transition'));
-(function loop(){ cycle.reset(); setTimeout(() => { cycle.succeed(); setTimeout(loop, 3000); }, 3600); })();
+const COPY={scan:['Hold Near Reader','Checking you in...'], ok:["You're Checked In",'Welcome to StormHacks, Mia']};
+const row=document.createElement('div'); row.className='row'; document.getElementById('sections').appendChild(row);
+const stage=(label,h,p)=>{ const el=document.createElement('div'); el.className='stage';
+  el.innerHTML=`<span class="label">${label}</span><canvas class="card"></canvas><div class="text"><h2>${h}</h2><p>${p}</p></div>`; row.appendChild(el); return el; };
+const a=stage('Tapping state',...COPY.scan), b=stage('Tapping success state',...COPY.ok), c=stage('Tapping to success',...COPY.scan);
+OtterLoader(a.querySelector('canvas'));
+OtterLoader(b.querySelector('canvas')).succeed();      // plays the blue growing out, then holds
+const cycle=OtterLoader(c.querySelector('canvas')), els=c.querySelectorAll('.text h2, .text p');
+const setText=(h,p)=>{ els.forEach(e=>e.style.opacity=0); setTimeout(()=>{ els[0].textContent=h; els[1].textContent=p; els.forEach(e=>e.style.opacity=1); },180); };
+(function loop(){ cycle.reset(); setText(...COPY.scan); setTimeout(()=>{ cycle.succeed(); setText(...COPY.ok); setTimeout(loop,3000); },3600); })();
 </script>
 </body>
 </html>
