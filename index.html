@@ -5,16 +5,19 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Otter Loader</title>
 <style>
-  body{margin:0;background:#0E0E0E;color:#EDEDED;font:15px/1.5 -apple-system,"Helvetica Neue",Arial,sans-serif;display:grid;place-items:center;min-height:100vh;gap:16px}
-  .card{width:min(70vw,320px);aspect-ratio:1;border-radius:22%;background:#171717;display:block}
-  .row{display:flex;gap:10px}
-  button{border:1px solid #2A2A2A;background:transparent;color:#EDEDED;font:inherit;font-size:13px;padding:6px 14px;border-radius:8px;cursor:pointer}
-  button:hover{border-color:#4DA3FF}
+  body{margin:0;background:#0E0E0E;color:#EDEDED;font:15px/1.5 -apple-system,"Helvetica Neue",Arial,sans-serif;display:grid;place-items:center;min-height:100vh;padding:24px;box-sizing:border-box}
+  .row{display:flex;gap:28px;flex-wrap:wrap;justify-content:center}
+  .stage{display:flex;flex-direction:column;gap:10px;align-items:center}
+  .card{width:min(80vw,280px);aspect-ratio:1;border-radius:22%;background:#171717;display:block}
+  .label{font:12px/1 ui-monospace,Menlo,monospace;letter-spacing:0.06em;text-transform:uppercase;color:#8F8F8F}
 </style>
 </head>
 <body>
-<canvas class="card" id="loader"></canvas>
-<div class="row"><button id="reset">Scanning state</button><button id="ok">Success state</button></div>
+<div class="row">
+  <div class="stage"><canvas class="card" id="scanning"></canvas><span class="label">Scanning state</span></div>
+  <div class="stage"><canvas class="card" id="success"></canvas><span class="label">Success state</span></div>
+  <div class="stage"><canvas class="card" id="transition"></canvas><span class="label">Scanning to success</span></div>
+</div>
 
 <script>
 /* ============================================================
@@ -35,6 +38,7 @@
    Usage:
      const loader = OtterLoader(canvasElement);   // starts scanning
      loader.succeed();                             // play the success state
+     loader.succeed({instant:true});               // jump straight to the held blue
      loader.reset();                               // back to scanning
      loader.destroy();                             // stop the clock
 
@@ -161,17 +165,18 @@ const OtterLoader = (() => {
     function tick(now){ if(!alive) return; const s=Math.floor(now/STEP); if(s!==last){ last=s; paint(s); } raf=requestAnimationFrame(tick); }
     sample().then(()=>{ raf=requestAnimationFrame(tick); });
     return {
-      succeed(){ tapBeat = Math.floor(performance.now()/STEP); },
+      succeed(o){ tapBeat = Math.floor(performance.now()/STEP) - (o&&o.instant ? 1000 : 0); },
       reset(){ tapBeat = null; },
       destroy(){ alive=false; cancelAnimationFrame(raf); },
     };
   };
 })();
 
-// demo wiring
-const loader = OtterLoader(document.getElementById('loader'));
-document.getElementById('ok').onclick = () => loader.succeed();
-document.getElementById('reset').onclick = () => loader.reset();
+// demo: the two states side by side, and a third card cycling from one to the other
+OtterLoader(document.getElementById('scanning'));
+OtterLoader(document.getElementById('success')).succeed({instant:true});
+const cycle = OtterLoader(document.getElementById('transition'));
+(function loop(){ cycle.reset(); setTimeout(() => { cycle.succeed(); setTimeout(loop, 3000); }, 3600); })();
 </script>
 </body>
 </html>
