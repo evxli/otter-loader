@@ -12,8 +12,10 @@
   .stage{align-items:stretch}
   /* annotation only, like a frame label in a design file: not part of the UI */
   .label{align-self:flex-start;font:400 12px/1 Inter,-apple-system,"Helvetica Neue",Arial,sans-serif;color:#6A6A6A;margin-bottom:12px}
-  /* the container: 1px #525252 at 30% outside, 12px corners, no fill, no padding; corner dots are clipped by the shape */
-  .card{width:min(80vw,240px);aspect-ratio:1;border-radius:12px;background:none;padding:0;box-sizing:content-box;border:1px solid rgba(82,82,82,0.3);display:block}
+  /* the container: 1px #525252 at 30% outside, 12px corners, 4px padding, no fill */
+  .frame{border:1px solid rgba(82,82,82,0.3);border-radius:12px;padding:4px;display:inline-block;line-height:0}
+  /* the grid inside it: 8px corners (12px minus the 4px padding) so the two radii stay concentric; corner dots are clipped */
+  .card{width:min(80vw,240px);aspect-ratio:1;border-radius:8px;background:none;display:block}
   /* state text: 24px below the animation, 4px between header and description */
   .text{margin-top:24px;display:flex;flex-direction:column;gap:4px;align-items:center;text-align:center;font-family:Inter,-apple-system,"Helvetica Neue",Arial,sans-serif}
   .text h2{margin:0;font-weight:600;font-size:20px;line-height:125%;letter-spacing:-0.01em;color:#EDEDED}
@@ -188,7 +190,7 @@ const OtterLoader = (() => {
 const COPY={scan:['Hold Near Reader','Checking you in...'], ok:["You're Checked In",'Welcome to StormHacks, Mia']};
 const row=document.createElement('div'); row.className='row'; document.getElementById('sections').appendChild(row);
 const stage=(label,h,p)=>{ const el=document.createElement('div'); el.className='stage';
-  el.innerHTML=`<span class="label">${label}</span><canvas class="card"></canvas><div class="text"><h2>${h}</h2><p>${p}</p></div>`; row.appendChild(el); return el; };
+  el.innerHTML=`<span class="label">${label}</span><div class="frame"><canvas class="card"></canvas></div><div class="text"><h2>${h}</h2><p>${p}</p></div>`; row.appendChild(el); return el; };
 const a=stage('Tapping state',...COPY.scan), b=stage('Tapping success state',...COPY.ok), c=stage('Tapping to success',...COPY.scan);
 OtterLoader(a.querySelector('canvas'));
 OtterLoader(b.querySelector('canvas')).succeed();      // plays the blue growing out, then holds

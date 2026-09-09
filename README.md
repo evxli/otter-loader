@@ -7,7 +7,7 @@ A dot-grid loading animation with a success transition. One HTML file, no depend
 
 Grid 36 x 36, one beat = 52 ms. Everything is defined in beats, so it looks the same at any canvas size.
 
-The container is a 1px `#525252` stroke at 30% opacity, outside the box, with 12px corners, no fill and no padding. The grid fills the canvas edge to edge and the rounded corners clip the background dots that fall past them.
+The container is a 1px `#525252` stroke at 30% opacity, outside the box, with 12px corners, 4px padding and no fill. The grid inside has 8px corners so the two radii stay concentric, and they clip the background dots that fall past them.
 
 Text under the animation, 24px below it: header Inter Semi Bold 20, line height 125%, letter spacing -1%; description Inter Regular 14, line height 150%, letter spacing -0.75%; 4px between them.
 
