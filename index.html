@@ -174,7 +174,7 @@ const OtterLoader = (() => {
 
 // demo: the two states side by side, and a third card cycling from one to the other
 OtterLoader(document.getElementById('scanning'));
-OtterLoader(document.getElementById('success')).succeed({instant:true});
+OtterLoader(document.getElementById('success')).succeed();          // plays the blue growing out, then holds
 const cycle = OtterLoader(document.getElementById('transition'));
 (function loop(){ cycle.reset(); setTimeout(() => { cycle.succeed(); setTimeout(loop, 3000); }, 3600); })();
 </script>
