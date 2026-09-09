@@ -30,10 +30,12 @@
                     the trail follows the band through the turn.
                     Shaded mono: eyes and outline brightest, muzzle
                     softest.
-   Success state  : "From the muzzle, soft". The scan stops, the
-                    grey dots rest dim, and a deep blue grows out
-                    from the left of the muzzle with a wide, soft
-                    front. The blue holds until reset().
+   Success state  : "From the muzzle, soft". On succeed() the band
+                    and its trail fade out over eight beats while a
+                    deep blue grows out from the left of the muzzle
+                    with a wide, soft front. Dots the blue has not
+                    reached settle to a dim rest. The blue holds
+                    until reset().
 
    Usage:
      const loader = OtterLoader(canvasElement);   // starts scanning
@@ -87,6 +89,7 @@ const OtterLoader = (() => {
 `;
   const N = 36, STEP = 52;                       // grid size, ms per beat
   const OFF = 0.12, REST = 0.3, EDGE = 6, GLOW_K = 0.3;
+  const HANDOFF = 8;                                   // beats the scan takes to fade out after succeed()
   const SCAN_EXTRA = 6, SCAN_TRAIL = 6;               // half period = rows + 6 beats; trail length in beats
   const INK = [244,244,244];                     // mono dot colour
   const BLUE = [30,122,255], BLUE_LIGHT = [70,150,255], GLOW = [232,243,255];
@@ -146,7 +149,9 @@ const OtterLoader = (() => {
       g.fillStyle='rgba(255,255,255,0.12)';
       for(const c of cells){ if(c.on) continue; g.beginPath(); g.arc(pad+(c.i+0.5)*cs,pad+(c.j+0.5)*cs,base*0.85,0,Math.PI*2); g.fill(); }
       for(const c of otter){
-        let k = b<0 ? scan(c,s) : REST;                              // scanning, or resting dim once tapped
+        const w = b<0 ? 1 : clamp(1-b/HANDOFF,0,1);                 // scan weight: 1 while loading, fades out after succeed()
+        const ks = scan(c,s);
+        let k = REST + (ks-REST)*w;                                  // band and trail fade toward the dim rest
         const ta=(b<0?TONE_MONO:TONE_BLUE)[c.tone], tr=TONE_R[c.tone];
         let col=INK, alpha=(0.16+0.84*k)*ta, rad=base*(0.82+0.28*k)*tr;
         if(b>=0){
